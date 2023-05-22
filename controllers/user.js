@@ -9,15 +9,11 @@ module.exports.INSERT_USER = async (req, res) => {
     const name = req.body.name;
     const capitalizedFirstName = name.charAt(0).toUpperCase() + name.slice(1);
 
-
     if (!req.body.email.includes("@")) {
       return res.status(400).json({ response: "Invalid email format" });
     }
 
     const password = req.body.password;
-    console.log("Password:", password);
-    console.log("Length:", password.length);
-    console.log("Contains digit:", /\d/.test(password));
 
     if (password.length < 6 || !/\d/.test(password)) {
       return res.status(400).json({
@@ -37,10 +33,33 @@ module.exports.INSERT_USER = async (req, res) => {
         });
 
         await user.save();
+
+        const token = jwt.sign(
+          {
+            email: user.email,
+            userId: user.id,
+          },
+          process.env.JWT_SECRET,
+          { expiresIn: "2h" },
+          {
+            algorithm: "RS256",
+          }
+        );
+        const refreshToken = jwt.sign(
+          {
+            email: user.email,
+            userId: user.id,
+          },
+          process.env.JWT_REFRESH_SECRET,
+          { expiresIn: "1d" }
+        );
+        res.status(200).json({
+          response: "User was saved successfully",
+          jwt: token,
+          refreshToken: refreshToken,
+        });
       });
     });
-
-    res.status(200).json({ response: "User was saved successfully" });
   } catch (err) {
     res.status(400).json({ response: "Validation was not successful" });
   }

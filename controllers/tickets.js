@@ -23,6 +23,100 @@ module.exports.INSERT_TICKET = async (req, res) => {
       res.status(500).json({ response: "Error occurred while saving the ticket" });
     }
   };
-// BUY_TICKET,
-//     GET_ALL_USERS_WITH_TICKETS,
-//     GET_USER_BY_ID_WITH_TICKETS,
+
+
+module.exports.BUY_TICKET = async (req, res) => {
+    try {
+      const userId = req.body.userId;
+      const ticketId = req.body.ticketId;
+      console.log(userId,ticketId)
+  
+      const ticket = await TicketModel.findOne({ id: ticketId });
+    
+      if (!ticket) {
+        return res.status(404).json({ response: "Ticket not found" });
+      }
+      const user = await UserModel.findOne({ id: userId });
+
+      if (!user) {
+        return res.status(404).json({ response: "User not found" });
+      }
+    
+      const ticketPrice = ticket.ticket_price;
+      const userBalance = user.money_balance;
+      console.log(ticketPrice,userBalance)
+
+      if (userBalance < ticketPrice) {
+        return res.status(400).json({ response: "Insufficient balance to buy the ticket" });
+      }
+    
+
+      user.money_balance -= ticketPrice;
+      user.bought_tickets.push(ticketId);
+      await user.save();
+
+      res.status(200).json({ response: "You have bought ticket successfully" });
+    } catch (err) {
+      console.log("ERR", err);
+      res.status(500).json({ response: "Internal Server Error" });
+    }
+  };   
+
+  module.exports.GET_ALL_USERS_WITH_TICKETS = async (req, res) => {
+    try {
+      const aggregatedUserData = await UserModel.aggregate([
+        {
+          $lookup: {
+            from: "tickets",
+            localField: "bought_tickets",
+            foreignField: "id",
+            as: "user_tickets",
+          },
+        },
+        {
+          $group: {
+            _id: "$_id",
+            id: { $first: "$id" },
+            name: { $first: "$name" },
+            email: { $first: "$email" },
+            password: { $first: "$password" },
+            bought_tickets: { $push: "$user_tickets" },
+            money_balance: { $first: "$money_balance" },
+          },
+        },
+      ]).exec();
+  
+      res.status(200).json({ users: aggregatedUserData });
+    } catch (err) {
+      console.log("ERR", err);
+      res.status(500).json({ response: "ERROR, please try later" });
+    }
+  };
+  
+
+  module.exports.GET_USER_BY_ID_WITH_TICKETS = async (req, res) => {
+      
+    try {
+      const userId = req.body.userId;
+      const aggregatedUserData = await UserModel.aggregate([
+        {
+          $lookup: {
+            from: "tickets",
+            localField: "bought_tickets",
+            foreignField: "id",
+            as: "user_tickets",
+          },
+        },
+       
+        { $match: { id: userId } },
+        {
+          $unwind: "$user_tickets",
+        },
+      ]).exec();
+    
+      res.status(200).json({ user: aggregatedUserData });
+    } catch (err) {
+        console.log("ERR", err);
+        res.status(500).json({ response: "ERROR, please try later" });
+    }
+  };
