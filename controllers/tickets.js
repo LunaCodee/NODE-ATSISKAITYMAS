@@ -66,6 +66,9 @@ module.exports.BUY_TICKET = async (req, res) => {
     try {
       const aggregatedUserData = await UserModel.aggregate([
         {
+          $unwind: "$bought_tickets"
+        },
+        {
           $lookup: {
             from: "tickets",
             localField: "bought_tickets",
@@ -82,8 +85,8 @@ module.exports.BUY_TICKET = async (req, res) => {
             password: { $first: "$password" },
             bought_tickets: { $push: "$user_tickets" },
             money_balance: { $first: "$money_balance" },
-          },
-        },
+          }
+        }
       ]).exec();
   
       res.status(200).json({ users: aggregatedUserData });
@@ -92,31 +95,41 @@ module.exports.BUY_TICKET = async (req, res) => {
       res.status(500).json({ response: "ERROR, please try later" });
     }
   };
-  
 
   module.exports.GET_USER_BY_ID_WITH_TICKETS = async (req, res) => {
       
-    try {
-      const userId = req.body.userId;
-      const aggregatedUserData = await UserModel.aggregate([
-        {
-          $lookup: {
-            from: "tickets",
-            localField: "bought_tickets",
-            foreignField: "id",
-            as: "user_tickets",
-          },
+  try {
+    const userId = req.body.userId;
+    const aggregatedUserData = await UserModel.aggregate([
+      {
+        $unwind: "$bought_tickets"
+      },
+      {
+        $lookup: {
+          from: "tickets",
+          localField: "bought_tickets",
+          foreignField: "id",
+          as: "user_tickets",
         },
-       
+      },
+      {
+        $group: {
+          _id: "$_id",
+          id: { $first: "$id" },
+          name: { $first: "$name" },
+          email: { $first: "$email" },
+          password: { $first: "$password" },
+          bought_tickets: { $push: "$user_tickets" },
+          money_balance: { $first: "$money_balance" },
+        }
+      },
         { $match: { id: userId } },
-        {
-          $unwind: "$user_tickets",
-        },
-      ]).exec();
-    
-      res.status(200).json({ user: aggregatedUserData });
-    } catch (err) {
-        console.log("ERR", err);
-        res.status(500).json({ response: "ERROR, please try later" });
-    }
-  };
+      
+    ]).exec();
+
+    res.status(200).json({ users: aggregatedUserData });
+  } catch (err) {
+    console.log("ERR", err);
+    res.status(500).json({ response: "ERROR, please try later" });
+  }
+};

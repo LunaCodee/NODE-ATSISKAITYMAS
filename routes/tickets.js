@@ -11,6 +11,6 @@ const {
 router.post("/insertTicket", INSERT_TICKET);
 router.post("/buyTicket",authMiddleware,  BUY_TICKET);
 router.get("/getAllUsersWithTickets", authMiddleware, GET_ALL_USERS_WITH_TICKETS);
-router.get("/getUserByIdWithTickets",  GET_USER_BY_ID_WITH_TICKETS);
+router.get("/getUserByIdWithTickets",authMiddleware,  GET_USER_BY_ID_WITH_TICKETS);
 
 module.exports = router;
